@@ -460,6 +460,36 @@
         }
 
         /* ============================================================
+           FORM FIELDS (shared across modals + profile detail screens)
+           ============================================================ */
+        .field-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border);
+            background: var(--bg-card-alt);
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+            transition: all var(--transition);
+            font-family: var(--font);
+            display: block;
+            appearance: auto;
+        }
+        .field-input:focus {
+            border-color: var(--primary);
+            background: var(--bg-card);
+            box-shadow: 0 0 0 4px var(--primary-glow);
+        }
+        textarea.field-input {
+            resize: vertical;
+            min-height: 70px;
+        }
+        select.field-input {
+            cursor: pointer;
+        }
+
+        /* ============================================================
            RADAR
            ============================================================ */
         .radar-wrapper {
@@ -806,6 +836,9 @@
         }
         .gig-card .bookmark-btn.bookmarked {
             color: var(--primary);
+        }
+        .gig-card .bookmark-btn.bookmarked svg {
+            fill: var(--primary);
         }
 
         /* ============================================================
@@ -1247,6 +1280,25 @@
         .detail-body .bid-chips .bid-chip .bc-name {
             font-size: 11px;
             color: var(--text-muted);
+        }
+        .detail-body .bid-chips .bid-chip--more {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .detail-body .bid-chip-more-stack {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-card-alt);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 12px;
+            color: var(--primary);
+            margin-bottom: 4px;
         }
         .detail-body .bid-input-row {
             display: flex;
@@ -1828,6 +1880,9 @@
             background: var(--bg-card-alt);
             padding-left: 8px;
         }
+        .notification-item.unread {
+            background: rgba(108, 92, 231, 0.05);
+        }
         .notification-item .notif-icon {
             width: 40px;
             height: 40px;
@@ -1846,6 +1901,16 @@
             font-weight: 600;
             font-size: 14px;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .notification-item .notif-content .notif-title .unread-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: inline-block;
         }
         .notification-item .notif-content .notif-desc {
             font-size: 13px;
@@ -2688,7 +2753,7 @@
                 <div class="screen-panel" id="screen-chats">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h1 class="page-title" style="font-size:24px;margin-bottom:0;">Chats</h1>
-                        <button class="btn btn-primary-custom btn-sm-custom">
+                        <button class="btn btn-primary-custom btn-sm-custom" id="chats-new-btn">
                             <i data-lucide="plus" size="14"></i> New
                         </button>
                     </div>
@@ -3713,7 +3778,6 @@
                 const span = document.querySelector(`.radar-person[data-name="${p.name}"] .radar-dist`);
                 if (span) span.textContent = newDist + ' km';
             });
-            toast(`Radius updated to ${km} km`);
         }
 
         // ============================================================
@@ -3767,7 +3831,7 @@
                 let chat = CHATS.find(c => c.name === person.name);
                 if (!chat) {
                     chat = { id: Date.now(), name: person.name, img: person.img, time: 'Now',
-                        last: 'Start chatting...', online: true };
+                        last: 'Start chatting...', unread: 0, status: 'Online' };
                     CHATS.push(chat);
                     state.chatMessages[chat.id] = [];
                 }
@@ -3883,7 +3947,7 @@
               <div class="gig-top">
                 <div class="gig-title">${g.title} <span class="emoji">${g.emoji}</span></div>
                 <button class="bookmark-btn ${bookmarked ? 'bookmarked' : ''}" data-gig-id="${g.id}">
-                  <i data-lucide="${bookmarked ? 'bookmark' : 'bookmark'}" size="17"></i>
+                  <i data-lucide="bookmark" size="17"></i>
                 </button>
               </div>
               <div class="gig-meta">${g.dist} &nbsp;•&nbsp; ${g.time}</div>
@@ -3919,7 +3983,11 @@
                 btn.addEventListener('click', () => {
                     state.gigCategory = c;
                     filterModal.hide();
-                    renderGigs();
+                    if (document.getElementById('screen-gigs').classList.contains('active')) {
+                        renderGigs();
+                    } else {
+                        navigate('gigs');
+                    }
                     lucide.createIcons();
                 });
                 grid.appendChild(btn);
@@ -3938,7 +4006,8 @@
 
             const bookmarkBtn = $('gig-detail-bookmark');
             const isBook = isBookmarked(gig.id);
-            bookmarkBtn.innerHTML = `<i data-lucide="${isBook ? 'bookmark' : 'bookmark'}" size="16"></i>`;
+            bookmarkBtn.classList.toggle('bookmarked', isBook);
+            bookmarkBtn.innerHTML = `<i data-lucide="bookmark" size="16"></i>`;
             bookmarkBtn.onclick = () => {
                 toggleBookmark(gig.id);
                 renderGigDetail();
@@ -3958,7 +4027,7 @@
                 let chat = CHATS.find(c => c.name === gig.postedBy);
                 if (!chat) {
                     chat = { id: Date.now(), name: gig.postedBy, img: gig.postedImg, time: 'Now',
-                        last: 'Start chatting...', online: true };
+                        last: 'Start chatting...', unread: 0, status: 'Online' };
                     CHATS.push(chat);
                     state.chatMessages[chat.id] = [];
                 }
@@ -3995,6 +4064,9 @@
                     `<div class="bid-chip-more-stack">+${bids.length - 3}</div><div class="bc-name">more bids</div>`;
                 bidChips.appendChild(more);
             }
+            if (bids.length === 0) {
+                bidChips.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">No bids yet — be the first!</p>';
+            }
 
             const input = $('bid-amount-input');
             const suggested = lowest !== null ? Math.max(0, lowest - 10) : gig.budget;
@@ -4009,6 +4081,10 @@
         function renderChats() {
             const list = $('chats-list');
             list.innerHTML = '';
+            if (!CHATS.length) {
+                list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px 0;">No conversations yet.</p>';
+                return;
+            }
             CHATS.forEach(c => {
                 const row = document.createElement('button');
                 row.className = 'chat-row';
@@ -4035,9 +4111,12 @@
                 </div>
               </div>
             `;
-                row.addEventListener('click', () => { state.activeChatId = c.id;
+                row.addEventListener('click', () => {
+                    c.unread = 0;
+                    state.activeChatId = c.id;
                     state.activeGigId = null;
-                    navigate('chatConvo'); });
+                    navigate('chatConvo');
+                });
                 list.appendChild(row);
             });
         }
@@ -4052,6 +4131,9 @@
             const container = $('convo-messages');
             const msgs = getChatMessages(chat.id);
             container.innerHTML = '';
+            if (!msgs.length) {
+                container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px 0;font-size:13px;">Say hello 👋</p>';
+            }
             msgs.forEach(m => {
                 const row = document.createElement('div');
                 row.className = `bubble-row ${m.from === 'me' ? 'me' : ''}`;
@@ -4072,6 +4154,10 @@
                 const followedNames = state.following.map(u => u.name);
                 data = SHORTS_DATA.filter(s => followedNames.includes(s.postedBy) || s.type === 'sponsored');
             }
+            if (!data.length) {
+                feed.innerHTML = '<p style="grid-column:1/-1;color:var(--text-muted);text-align:center;padding:30px 0;">Follow people to see their shorts here.</p>';
+                return;
+            }
             data.forEach(s => {
                 const card = document.createElement('div');
                 card.className = 'short-card';
@@ -4086,13 +4172,13 @@
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartColor}" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
                   <span>${like.count}</span>
                 </button>
-                <button class="short-action"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg><span>${s.comments}</span></button>
+                <button class="short-action comment-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg><span>${s.comments}</span></button>
                 <button class="short-action share-short" data-id="${s.id}"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg><span>Share</span></button>
               </div>
               <div class="short-bottom">
                 <div class="short-caption">${s.caption}</div>
                 ${s.sub ? `<div class="short-sub">${s.sub}</div>` : ''}
-                ${s.type === 'gig' ? `<button class="short-request" data-short-id="${s.id}"><img src="${s.img}" alt="" />Request</button>` : `<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;">${s.dist || ''}</div><button class="btn btn-primary-custom btn-sm-custom mt-1" style="background:rgba(255,255,255,0.2)!important;box-shadow:none!important;">Order Now</button>`}
+                ${s.type === 'gig' ? `<button class="short-request" data-short-id="${s.id}"><img src="${s.img}" alt="" />Request</button>` : `<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;">${s.dist || ''}</div><button class="btn btn-primary-custom btn-sm-custom mt-1 sponsored-order" style="background:rgba(255,255,255,0.2)!important;box-shadow:none!important;">Order Now</button>`}
               </div>
             `;
                 feed.appendChild(card);
@@ -4105,6 +4191,11 @@
                         cur.count += cur.liked ? 1 : -1;
                         renderShorts(); }
                 });
+                const commentBtn = card.querySelector('.comment-btn');
+                if (commentBtn) commentBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toast('💬 Comments coming soon');
+                });
                 const shareBtn = card.querySelector('.share-short');
                 if (shareBtn) {
                     shareBtn.addEventListener('click', (e) => {
@@ -4112,15 +4203,30 @@
                         toast('📤 Shared!');
                     });
                 }
+                const sponsoredBtn = card.querySelector('.sponsored-order');
+                if (sponsoredBtn) {
+                    sponsoredBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toast(`🛒 Opening ${s.name}...`);
+                    });
+                }
                 const req = card.querySelector('.short-request');
                 if (req) req.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const meera = CHATS.find(c => c.name === 'Meera') || CHATS[0];
-                    state.activeChatId = meera.id;
+                    const person = NEARBY_PEOPLE.find(p => p.name === s.postedBy);
+                    let chat = CHATS.find(c => c.name === s.postedBy);
+                    if (!chat) {
+                        chat = { id: Date.now(), name: s.postedBy, img: s.img || (person ? person.img : 'https://i.pravatar.cc/100?img=1'), time: 'Now',
+                            last: 'Start chatting...', unread: 0, status: 'Online' };
+                        CHATS.push(chat);
+                        state.chatMessages[chat.id] = [];
+                    }
+                    state.activeChatId = chat.id;
                     state.activeGigId = null;
                     navigate('chatConvo');
                 });
                 card.addEventListener('click', () => {
+                    if (s.type === 'sponsored') { toast(`🛒 Opening ${s.name}...`); return; }
                     state.viewingUser = NEARBY_PEOPLE.find(p => p.name === s.postedBy) || NEARBY_PEOPLE[0];
                     navigate('userProfile');
                 });
@@ -4263,20 +4369,23 @@
         function renderNotifications() {
             const list = $('notif-list');
             list.innerHTML = '';
+            if (!state.notifications.length) {
+                list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px 0;">No notifications yet.</p>';
+                return;
+            }
             state.notifications.forEach(n => {
                 const item = document.createElement('div');
-                item.className = 'notification-item';
+                item.className = 'notification-item' + (n.read ? '' : ' unread');
                 item.innerHTML = `
               <div class="notif-icon"><i data-lucide="${n.icon}" size="18"></i></div>
               <div class="notif-content">
-                <div class="notif-title">${n.title}</div>
+                <div class="notif-title">${n.title}${!n.read ? '<span class="unread-dot"></span>' : ''}</div>
                 <div class="notif-desc">${n.desc}</div>
                 <div class="notif-time">${n.time}</div>
               </div>
             `;
                 item.addEventListener('click', () => {
                     n.read = true;
-                    toast('Notification marked as read');
                     renderNotifications();
                 });
                 list.appendChild(item);
@@ -4287,6 +4396,10 @@
         function renderMyGigs() {
             const list = $('mygigs-list');
             list.innerHTML = '';
+            if (!state.myGigs.length) {
+                list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px 0;">You have not posted any gigs yet.</p>';
+                return;
+            }
             state.myGigs.forEach(g => {
                 const card = document.createElement('div');
                 card.className = 'my-gig-card';
@@ -4299,37 +4412,33 @@
               </div>
               <div class="mg-meta">${g.dist} • ${g.time} • ₹${g.price}</div>
               <div class="mg-actions">
-                <button data-gig-id="${g.id}">View Bids</button>
-                <button data-gig-id="${g.id}">Edit</button>
-                <button class="mg-primary" data-gig-id="${g.id}">Chat</button>
+                <button data-gig-id="${g.id}" data-action="view">View Bids</button>
+                <button data-gig-id="${g.id}" data-action="edit">Edit</button>
+                <button class="mg-primary" data-gig-id="${g.id}" data-action="chat">Chat</button>
               </div>
             `;
                 card.querySelectorAll('.mg-actions button').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const id = Number(btn.dataset.gigId);
-                        const gig = GIGS.find(g => g.id === id);
-                        if (gig) {
+                        const gig = GIGS.find(gg => gg.id === id) || g;
+                        const action = btn.dataset.action;
+                        if (action === 'chat') {
+                            let chat = CHATS.find(c => c.name === gig.postedBy);
+                            if (!chat) {
+                                chat = { id: Date.now(), name: gig.postedBy, img: gig.postedImg, time: 'Now',
+                                    last: 'Start chatting...', unread: 0, status: 'Online' };
+                                CHATS.push(chat);
+                                state.chatMessages[chat.id] = [];
+                            }
+                            state.activeChatId = chat.id;
+                            navigate('chatConvo');
+                        } else {
                             state.activeGigId = id;
                             navigate('gigDetail');
                         }
                     });
                 });
-                const chatBtn = card.querySelectorAll('.mg-actions button')[2];
-                if (chatBtn) {
-                    chatBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        let chat = CHATS.find(c => c.name === g.postedBy);
-                        if (!chat) {
-                            chat = { id: Date.now(), name: g.postedBy, img: g.postedImg, time: 'Now',
-                                last: 'Start chatting...', online: true };
-                            CHATS.push(chat);
-                            state.chatMessages[chat.id] = [];
-                        }
-                        state.activeChatId = chat.id;
-                        navigate('chatConvo');
-                    });
-                }
                 list.appendChild(card);
             });
         }
@@ -4354,14 +4463,23 @@
               </div>
               <div class="mg-meta">Your bid: ₹${b.amount}</div>
               <div class="mg-actions">
-                <button data-gig-id="${b.gigId}">View Gig</button>
-                ${b.status === 'pending' ? `<button class="mg-primary" data-gig-id="${b.gigId}">Withdraw</button>` : ''}
+                <button data-gig-id="${b.gigId}" data-action="view">View Gig</button>
+                ${b.status === 'pending' ? `<button class="mg-primary" data-gig-id="${b.gigId}" data-action="withdraw">Withdraw</button>` : ''}
               </div>
             `;
                 card.querySelectorAll('.mg-actions button').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const id = Number(btn.dataset.gigId);
+                        const action = btn.dataset.action;
+                        if (action === 'withdraw') {
+                            const bids = state.gigBids[id] || [];
+                            state.gigBids[id] = bids.filter(bid => bid.name !== 'You');
+                            state.myBids = state.myBids.filter(mb => mb.gigId !== id);
+                            toast('Bid withdrawn');
+                            renderMyBids();
+                            return;
+                        }
                         const gig = GIGS.find(g => g.id === id);
                         if (gig) {
                             state.activeGigId = id;
@@ -4419,12 +4537,16 @@
             });
             const addBtn = document.createElement('button');
             addBtn.className = 'btn btn-primary-custom w-100 mt-3';
+            addBtn.id = 'reviews-add-inline';
             addBtn.textContent = '+ Write a Review';
             addBtn.onclick = () => {
                 const name = prompt('Your name:');
-                const rating = parseInt(prompt('Rating (1-5):'));
+                if (!name) return;
+                let rating = parseInt(prompt('Rating (1-5):'), 10);
+                if (isNaN(rating)) rating = 5;
+                rating = Math.min(5, Math.max(1, rating));
                 const text = prompt('Review:');
-                if (name && rating && text) {
+                if (name && text) {
                     state.reviews.unshift({ from: name, img: 'https://i.pravatar.cc/60?img=' + Math.floor(Math
                             .random() * 70), rating, text, time: 'Just now' });
                     renderReviews();
@@ -4446,6 +4568,12 @@
             <button class="btn btn-primary-custom w-100 mb-3" id="wallet-add-money">Add Money</button>
             <h5 style="font-weight:700;margin-bottom:10px;">Transactions</h5>
           `;
+            if (!state.wallet.transactions.length) {
+                const empty = document.createElement('p');
+                empty.style.cssText = 'color:var(--text-muted);text-align:center;padding:20px 0;';
+                empty.textContent = 'No transactions yet.';
+                container.appendChild(empty);
+            }
             state.wallet.transactions.forEach(t => {
                 const tx = document.createElement('div');
                 tx.className = 'wallet-transaction';
@@ -4490,16 +4618,16 @@
             <div class="call-actions">
               <button class="call-mute" id="call-mute-btn"><i data-lucide="mic-off" size="22"></i></button>
               <button class="call-end" id="call-end-btn"><i data-lucide="phone-off" size="26"></i></button>
-              <button class="call-speaker" id="call-speaker-btn"><i data-lucide="speaker" size="22"></i></button>
+              <button class="call-speaker" id="call-speaker-btn"><i data-lucide="volume-2" size="22"></i></button>
             </div>
           `;
             document.getElementById('dynamic-overlays').appendChild(overlay);
             lucide.createIcons();
 
             let statusEl = $('call-status');
-            setTimeout(() => { statusEl.textContent = 'Ringing...'; }, 600);
-            setTimeout(() => { statusEl.textContent = 'Connected';
-                toast('📞 Call connected'); }, 2500);
+            const t1 = setTimeout(() => { if (statusEl) statusEl.textContent = 'Ringing...'; }, 600);
+            const t2 = setTimeout(() => { if (statusEl) { statusEl.textContent = 'Connected';
+                toast('📞 Call connected'); } }, 2500);
 
             $('call-mute-btn').addEventListener('click', function() {
                 const icon = this.querySelector('i');
@@ -4514,14 +4642,16 @@
             $('call-speaker-btn').addEventListener('click', function() {
                 const icon = this.querySelector('i');
                 if (icon) {
-                    const isOn = icon.getAttribute('data-lucide') === 'speaker';
-                    icon.setAttribute('data-lucide', isOn ? 'speaker-off' : 'speaker');
+                    const isOn = icon.getAttribute('data-lucide') === 'volume-2';
+                    icon.setAttribute('data-lucide', isOn ? 'volume-x' : 'volume-2');
                     lucide.createIcons();
                     toast(isOn ? '🔊 Speaker off' : '🔊 Speaker on');
                 }
             });
 
             $('call-end-btn').addEventListener('click', function() {
+                clearTimeout(t1);
+                clearTimeout(t2);
                 overlay.remove();
                 toast('📞 Call ended');
             });
@@ -4538,7 +4668,7 @@
             lucide.createIcons();
 
             const closeMenu = () => menu.remove();
-            document.addEventListener('click', closeMenu, { once: true });
+            setTimeout(() => document.addEventListener('click', closeMenu, { once: true }), 0);
 
             $('menu-report').addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -4566,7 +4696,7 @@
                     errorEl.classList.add('hidden');
                     navigate('nearby');
                 } else {
-                    errorEl.textContent = 'Invalid email or password.';
+                    errorEl.textContent = 'Please enter both email and password.';
                     errorEl.classList.remove('hidden');
                 }
             });
@@ -4581,6 +4711,7 @@
             // ---- Radius ----
             $('radius-selector').addEventListener('change', function() {
                 updateRadius(parseInt(this.value));
+                toast(`Radius updated to ${this.value} km`);
             });
 
             // ---- Sidebar nav ----
@@ -4632,7 +4763,9 @@
             $('post-request-btn').addEventListener('click', () => {
                 $('post-success').classList.add('hidden');
                 $('post-submit').classList.remove('hidden');
-                document.getElementById('post-body').querySelector('.field-input').value = '';
+                $('post-what').value = '';
+                $('post-budget').value = 400;
+                $('post-when').value = 'Today, 4:00 PM';
                 postModal.show();
                 lucide.createIcons();
             });
@@ -4727,6 +4860,9 @@
                 const msgs = state.chatMessages[chat.id] || [];
                 msgs.push({ from: 'me', text, time: 'Now' });
                 state.chatMessages[chat.id] = msgs;
+                renderChatConvo();
+                lucide.createIcons();
+                input.value = '';
                 setTimeout(() => {
                     const replies = ['Okay!', 'Got it 👍', 'Sure, sounds good.', "I'll be there.", 'Thanks! 😊',
                         'Let me check.'
@@ -4734,12 +4870,12 @@
                     msgs.push({ from: 'them', text: replies[Math.floor(Math.random() * replies.length)],
                         time: 'Just now' });
                     state.chatMessages[chat.id] = msgs;
-                    renderChatConvo();
-                    lucide.createIcons();
+                    chat.last = msgs[msgs.length - 1].text;
+                    if (document.getElementById('screen-chat-convo').classList.contains('active') && state.activeChatId === chat.id) {
+                        renderChatConvo();
+                        lucide.createIcons();
+                    }
                 }, 800 + Math.random() * 1200);
-                renderChatConvo();
-                lucide.createIcons();
-                input.value = '';
             }
             $('convo-send').addEventListener('click', sendMessage);
             $('convo-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
@@ -4751,6 +4887,11 @@
                     const name = row.querySelector('.chat-name')?.textContent?.toLowerCase() || '';
                     row.style.display = name.includes(q) ? 'flex' : 'none';
                 });
+            });
+
+            $('chats-new-btn').addEventListener('click', () => {
+                toast('👋 Tap a person on Nearby to start a new chat');
+                navigate('nearby');
             });
 
             // ---- Shorts tabs ----
@@ -4784,7 +4925,7 @@
             $('bookmarks-back').addEventListener('click', () => navigate('profile'));
             $('reviews-back').addEventListener('click', () => navigate('profile'));
             $('reviews-add').addEventListener('click', () => {
-                const addBtn = document.querySelector('#reviews-list .btn');
+                const addBtn = $('reviews-add-inline');
                 if (addBtn) addBtn.click();
             });
             $('wallet-back').addEventListener('click', () => navigate('profile'));
@@ -4875,6 +5016,7 @@
             $('profile-settings-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
             document.querySelectorAll('.settings-row').forEach(row => {
+                if (row.id === 'settings-logout-row') return;
                 row.addEventListener('click', () => {
                     const label = row.querySelector('.settings-label')?.textContent || 'Setting';
                     toast(`⚙️ ${label} opened`);
@@ -4888,7 +5030,6 @@
             $('login-password').value = 'password';
 
             lucide.createIcons();
-            setInterval(() => lucide.createIcons(), 2000);
         }
 
         const origCreate = lucide.createIcons;
