@@ -4,6 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NearCircle — Connect Locally</title>
+    <script>
+        // Registered as early as possible (before any <img> in the body
+        // starts loading) so a broken avatar URL is caught on its very
+        // first failed request instead of racing the main app script.
+        (function () {
+            var AVATAR_COLORS = ['#6C5CE7', '#00B3B0', '#FD79A8', '#3B82F6', '#F59E0B', '#22C55E', '#A855F7', '#EF4444'];
+            function initialsFor(name) {
+                return (name || 'U').split(' ').filter(Boolean).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase() || 'U';
+            }
+            function colorFor(seed) {
+                var hash = 0, s = seed || 'U';
+                for (var i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+                return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+            }
+            window.avatarDataUri = function (name) {
+                var bg = colorFor(name), label = initialsFor(name);
+                var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'>" +
+                    "<rect width='100' height='100' rx='50' fill='" + bg + "'/>" +
+                    "<text x='50' y='52' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='#fff' text-anchor='middle' dominant-baseline='middle'>" + label + "</text></svg>";
+                return 'data:image/svg+xml,' + encodeURIComponent(svg);
+            };
+            document.addEventListener('error', function (e) {
+                var t = e.target;
+                if (t && t.tagName === 'IMG' && t.src.indexOf('data:image/svg+xml') !== 0) {
+                    t.src = window.avatarDataUri(t.alt || t.dataset.name || 'U');
+                }
+            }, true);
+        })();
+    </script>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
         onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css';" />
@@ -44,6 +73,22 @@
             --transition: 0.3s cubic-bezier(0.22, 1, 0.36, 1);
             --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
+
+        body.dark-mode {
+            --bg-body: #131120;
+            --bg-card: #1D1A2E;
+            --bg-card-alt: #262238;
+            --text-primary: #F3F1FA;
+            --text-secondary: #B7B1D4;
+            --text-muted: #837CA8;
+            --border: #332E4E;
+            --border-light: #29253D;
+            --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.25);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+            --shadow-xl: 0 30px 80px rgba(0, 0, 0, 0.55);
+        }
+        body.dark-mode { transition: background var(--transition); }
 
         /* ============================================================
            GLOBAL RESET & BASE
@@ -1624,6 +1669,165 @@
         }
 
         /* ============================================================
+           MY POSTS (profile composer + feed)
+           ============================================================ */
+        .profile-posts-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        .post-composer {
+            display: flex;
+            gap: 12px;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+        .post-composer .composer-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .post-composer .composer-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .composer-textarea {
+            resize: none;
+            min-height: 44px;
+            background: var(--bg-card);
+        }
+        .composer-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .composer-mood-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .composer-mood-chips .mood-chip {
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: var(--font);
+        }
+        .composer-mood-chips .mood-chip:hover {
+            background: var(--bg-card-alt);
+        }
+        .composer-mood-chips .mood-chip.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            border-color: transparent;
+        }
+        .post-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            transition: all var(--transition);
+        }
+        .post-card:hover {
+            box-shadow: var(--shadow-sm);
+        }
+        .post-card .post-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .post-card .post-card-header img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .post-card .post-card-name {
+            font-weight: 700;
+            font-size: 13.5px;
+            color: var(--text-primary);
+        }
+        .post-card .post-card-time {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+        .post-card .post-card-mood {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary);
+            background: rgba(108, 92, 231, 0.08);
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .post-card .post-card-text {
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-bottom: 10px;
+        }
+        .post-card .post-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            border-top: 1px solid var(--border-light);
+            padding-top: 10px;
+        }
+        .post-card .post-action-btn {
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: var(--font);
+            padding: 2px 0;
+        }
+        .post-card .post-action-btn:hover {
+            color: var(--primary);
+        }
+        .post-card .post-action-btn.liked {
+            color: var(--accent);
+        }
+        .post-card .post-action-btn.liked svg {
+            fill: var(--accent);
+        }
+        .post-card .post-delete-btn {
+            margin-left: auto;
+            color: var(--text-muted);
+        }
+        .post-card .post-delete-btn:hover {
+            color: #EF4444;
+        }
+        .posts-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 24px 0;
+        }
+
+        /* ============================================================
            MODAL SYSTEM (self-contained — does not require Bootstrap JS
            or CSS to function; Bootstrap's own .modal styles, if the
            stylesheet loads, layer on top harmlessly)
@@ -3015,6 +3219,26 @@
 
                     <div class="profile-menu" id="profile-menu"></div>
 
+                    <div class="profile-posts-section">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="section-label" style="margin-bottom:0;">My Posts</span>
+                            <span class="section-sub" id="posts-count-label">0 posts</span>
+                        </div>
+                        <div class="post-composer">
+                            <img src="https://i.pravatar.cc/80?img=44" alt="" id="composer-avatar" class="composer-avatar" />
+                            <div class="composer-body">
+                                <textarea id="post-composer-input" class="field-input composer-textarea" rows="2" placeholder="Share an update, offer, or ask your circle for help..."></textarea>
+                                <div class="composer-footer">
+                                    <div class="composer-mood-chips" id="composer-mood-chips"></div>
+                                    <button class="btn btn-primary-custom btn-sm-custom" id="post-composer-submit">
+                                        <i data-lucide="send" size="13"></i> Post
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="my-posts-list"></div>
+                    </div>
+
                     <div class="logout-row">
                         <button class="profile-row" id="logout-btn">
                             <span class="row-icon"><i data-lucide="log-out" size="18"></i></span>
@@ -3168,14 +3392,14 @@
                     <div style="overflow-y:auto;flex:1;">
                         <div class="settings-group">
                             <div class="sg-title">General</div>
-                            <div class="settings-row"><div class="settings-left"><i data-lucide="bell" size="16" class="settings-icon"></i><span class="settings-label">Notifications</span></div><div class="settings-value">On</div></div>
-                            <div class="settings-row"><div class="settings-left"><i data-lucide="globe" size="16" class="settings-icon"></i><span class="settings-label">Language</span></div><div class="settings-value">English</div></div>
-                            <div class="settings-row"><div class="settings-left"><i data-lucide="moon" size="16" class="settings-icon"></i><span class="settings-label">Dark Mode</span></div><div class="settings-value">System</div></div>
+                            <div class="settings-row"><div class="settings-left"><i data-lucide="bell" size="16" class="settings-icon"></i><span class="settings-label">Notifications</span></div><div class="toggle-switch active" id="settings-notif-toggle"><div class="toggle-knob"></div></div></div>
+                            <div class="settings-row" id="settings-language-row"><div class="settings-left"><i data-lucide="globe" size="16" class="settings-icon"></i><span class="settings-label">Language</span></div><div class="settings-value" id="settings-language-value">English</div></div>
+                            <div class="settings-row"><div class="settings-left"><i data-lucide="moon" size="16" class="settings-icon"></i><span class="settings-label">Dark Mode</span></div><div class="toggle-switch" id="settings-darkmode-toggle"><div class="toggle-knob"></div></div></div>
                         </div>
                         <div class="settings-group">
                             <div class="sg-title">Privacy</div>
-                            <div class="settings-row"><div class="settings-left"><i data-lucide="eye" size="16" class="settings-icon"></i><span class="settings-label">Profile Visibility</span></div><div class="settings-value">Public</div></div>
-                            <div class="settings-row"><div class="settings-left"><i data-lucide="map-pin" size="16" class="settings-icon"></i><span class="settings-label">Location Sharing</span></div><div class="settings-value">While Using</div></div>
+                            <div class="settings-row"><div class="settings-left"><i data-lucide="eye" size="16" class="settings-icon"></i><span class="settings-label">Profile Visibility</span></div><div class="toggle-switch active" id="settings-visibility-toggle"><div class="toggle-knob"></div></div></div>
+                            <div class="settings-row" id="settings-location-row"><div class="settings-left"><i data-lucide="map-pin" size="16" class="settings-icon"></i><span class="settings-label">Location Sharing</span></div><div class="settings-value" id="settings-location-value">While Using</div></div>
                         </div>
                         <div class="settings-group">
                             <div class="sg-title">Account</div>
@@ -3623,13 +3847,13 @@
 
         const NOTIFICATIONS = [
             { id: 1, icon: 'message-circle', title: 'New message from Ritu', desc: 'Hey, I can help with the dog walk.',
-                time: '5 min ago', read: false },
+                time: '5 min ago', read: false, action: { type: 'chat', name: 'Ritu S.' } },
             { id: 2, icon: 'users', title: 'New bid on your gig', desc: 'Arjun bid ₹320 on "Fix leaking tap".',
-                time: '1 hour ago', read: false },
+                time: '1 hour ago', read: false, action: { type: 'gig', gigId: 2 } },
             { id: 3, icon: 'check-circle', title: 'Gig completed', desc: '"Walk my dog" marked as completed.',
-                time: '2 hours ago', read: true },
+                time: '2 hours ago', read: true, action: { type: 'gig', gigId: 1 } },
             { id: 4, icon: 'star', title: 'You received a review', desc: 'Kavya gave you 5 stars ⭐', time: 'Yesterday',
-                read: true },
+                read: true, action: { type: 'reviews' } },
         ];
 
         const PROFILE_MENU_DATA = [
@@ -3686,6 +3910,10 @@
             ],
             following: [],
             bookmarks: [],
+            posts: [
+                { id: 1, text: "Just finished helping Rohit assemble his new bookshelf 🛠️ Love this community!", mood: '💡 Update', time: '2 hours ago', likes: 6, liked: false, comments: 2 },
+                { id: 2, text: "Does anyone have a ladder I could borrow this weekend? Happy to trade a home-cooked meal for it 😄", mood: '🙋 Ask', time: 'Yesterday', likes: 11, liked: false, comments: 4 },
+            ],
             reviews: [
                 { from: 'Kavya', img: 'https://i.pravatar.cc/60?img=9', rating: 5, text: 'Great service! Very reliable.',
                     time: '2 days ago' },
@@ -3802,36 +4030,11 @@
         }
 
         // ------------------------------------------------------------
-        // Self-contained avatar fallback — if any photo URL (pravatar,
-        // unsplash, etc.) can't load, generate a colored initials
-        // avatar locally instead of leaving a broken image.
+        // Avatar fallback (avatarDataUri + the <img error> listener)
+        // is registered in <head> — see top of file — so it's active
+        // before any image in the body starts loading. Nothing else
+        // to set up here.
         // ------------------------------------------------------------
-        const AVATAR_COLORS = ['#6C5CE7', '#00B3B0', '#FD79A8', '#3B82F6', '#F59E0B', '#22C55E', '#A855F7', '#EF4444'];
-        function initialsFor(name) {
-            return (name || 'U').split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'U';
-        }
-        function colorFor(seed) {
-            let hash = 0;
-            const s = seed || 'U';
-            for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
-            return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-        }
-        function avatarDataUri(name) {
-            const bg = colorFor(name);
-            const label = initialsFor(name);
-            const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='${bg}'/><text x='50' y='52' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='#fff' text-anchor='middle' dominant-baseline='middle'>${label}</text></svg>`;
-            return 'data:image/svg+xml,' + encodeURIComponent(svg);
-        }
-        // Any <img> that fails to load anywhere in the app (broken
-        // network, blocked CDN) automatically falls back to a
-        // generated avatar built from its alt text — no blank boxes.
-        document.addEventListener('error', function(e) {
-            const t = e.target;
-            if (t && t.tagName === 'IMG' && !t.dataset.fallbackApplied) {
-                t.dataset.fallbackApplied = '1';
-                t.src = avatarDataUri(t.alt || t.dataset.name || 'U');
-            }
-        }, true);
 
         // ------------------------------------------------------------
         // Self-contained modal system (no Bootstrap JS dependency).
@@ -4619,7 +4822,114 @@
                     navigate(m.key); });
                 menu.appendChild(row);
             });
+            renderPosts();
             renderIcons();
+        }
+
+        // ============================================================
+        // MY POSTS — post anything to your own profile feed
+        // ============================================================
+        const POST_MOODS = ['💡 Update', '🙋 Ask', '🎉 Celebrate', '📣 Offer'];
+        let composerMood = null;
+
+        function renderMoodChips() {
+            const wrap = $('composer-mood-chips');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            POST_MOODS.forEach(mood => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'mood-chip' + (composerMood === mood ? ' active' : '');
+                chip.textContent = mood;
+                chip.addEventListener('click', () => {
+                    composerMood = (composerMood === mood) ? null : mood;
+                    renderMoodChips();
+                });
+                wrap.appendChild(chip);
+            });
+        }
+
+        function renderPosts() {
+            const composerAvatar = $('composer-avatar');
+            if (composerAvatar) { composerAvatar.src = state.user.avatar; composerAvatar.alt = state.user.name; }
+            renderMoodChips();
+
+            const list = $('my-posts-list');
+            const countLabel = $('posts-count-label');
+            if (!list) return;
+            if (countLabel) countLabel.textContent = state.posts.length + (state.posts.length === 1 ? ' post' : ' posts');
+            list.innerHTML = '';
+            if (!state.posts.length) {
+                list.innerHTML = '<p class="posts-empty">Nothing posted yet — share your first update above 👆</p>';
+                return;
+            }
+            state.posts.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.innerHTML = `
+              <div class="post-card-header">
+                <img src="${state.user.avatar}" alt="${state.user.name}" />
+                <div>
+                  <div class="post-card-name">${state.user.name}</div>
+                  <div class="post-card-time">${p.time}</div>
+                </div>
+                ${p.mood ? `<span class="post-card-mood">${p.mood}</span>` : ''}
+              </div>
+              <div class="post-card-text">${p.text}</div>
+              <div class="post-card-actions">
+                <button class="post-action-btn like-post-btn ${p.liked ? 'liked' : ''}" data-post-id="${p.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${p.liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                  ${p.likes}
+                </button>
+                <button class="post-action-btn"><i data-lucide="message-circle" size="14"></i> ${p.comments}</button>
+                <button class="post-action-btn"><i data-lucide="share-2" size="14"></i> Share</button>
+                <button class="post-action-btn post-delete-btn" data-delete-id="${p.id}"><i data-lucide="ban" size="14"></i> Delete</button>
+              </div>
+            `;
+                list.appendChild(card);
+            });
+
+            list.querySelectorAll('.like-post-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = Number(btn.dataset.postId);
+                    const post = state.posts.find(p => p.id === id);
+                    if (!post) return;
+                    post.liked = !post.liked;
+                    post.likes += post.liked ? 1 : -1;
+                    renderPosts();
+                    renderIcons();
+                });
+            });
+            list.querySelectorAll('.post-delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = Number(btn.dataset.deleteId);
+                    state.posts = state.posts.filter(p => p.id !== id);
+                    toast('Post deleted');
+                    renderPosts();
+                    renderIcons();
+                });
+            });
+            renderIcons();
+        }
+
+        function submitPost() {
+            const input = $('post-composer-input');
+            const text = input.value.trim();
+            if (!text) { toast('Write something before posting.'); return; }
+            state.posts.unshift({
+                id: Date.now(),
+                text,
+                mood: composerMood,
+                time: 'Just now',
+                likes: 0,
+                liked: false,
+                comments: 0,
+            });
+            input.value = '';
+            composerMood = null;
+            renderPosts();
+            renderIcons();
+            toast('✅ Posted to your profile!');
         }
 
         // ============================================================
@@ -4685,6 +4995,29 @@
             `;
                 item.addEventListener('click', () => {
                     n.read = true;
+                    const action = n.action;
+                    if (action && action.type === 'chat') {
+                        let chat = CHATS.find(c => c.name === action.name);
+                        if (!chat) {
+                            chat = { id: Date.now(), name: action.name, img: avatarDataUri(action.name), time: 'Now',
+                                last: 'Start chatting...', unread: 0, status: 'Online' };
+                            CHATS.push(chat);
+                            state.chatMessages[chat.id] = [];
+                        }
+                        state.activeChatId = chat.id;
+                        state.activeGigId = null;
+                        navigate('chatConvo');
+                        return;
+                    }
+                    if (action && action.type === 'gig' && GIGS.find(g => g.id === action.gigId)) {
+                        state.activeGigId = action.gigId;
+                        navigate('gigDetail');
+                        return;
+                    }
+                    if (action && action.type === 'reviews') {
+                        navigate('reviews');
+                        return;
+                    }
                     renderNotifications();
                 });
                 list.appendChild(item);
@@ -5249,7 +5582,19 @@
                 state.profileDetail = 'personal';
                 navigate('personal');
             });
-            $('profile-avatar-edit').addEventListener('click', () => toast('📸 Change profile picture'));
+            let avatarSeed = 0;
+            $('profile-avatar-edit').addEventListener('click', () => {
+                avatarSeed += 1;
+                state.user.avatar = avatarDataUri(state.user.name + '#' + avatarSeed);
+                updateHomeUI();
+                renderPosts();
+                toast('📸 Profile photo updated!');
+            });
+
+            $('post-composer-submit').addEventListener('click', submitPost);
+            $('post-composer-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitPost();
+            });
 
             $('profile-personal-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
@@ -5282,16 +5627,53 @@
 
             $('profile-verification-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
-            $('verification-upload').addEventListener('click', () => toast('📎 Upload ID dialog'));
+            $('verification-upload').addEventListener('click', () => {
+                const id = prompt('Enter your government ID number:', $('verification-id').value === 'XXXX-XXXX-XXXX' ? '' : $('verification-id').value);
+                if (id && id.trim()) {
+                    $('verification-id').value = id.trim();
+                    $('verif-address-toggle').classList.add('active');
+                    toast('📎 ID uploaded — pending review');
+                }
+            });
             document.querySelectorAll('.toggle-switch').forEach(t => {
                 t.addEventListener('click', () => { t.classList.toggle('active');
                     toast(t.classList.contains('active') ? '✅ Enabled' : '⛔ Disabled'); });
+            });
+            // Dark Mode toggle additionally flips the real theme, live.
+            $('settings-darkmode-toggle').addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                toast(document.body.classList.contains('dark-mode') ? '🌙 Dark mode on' : '☀️ Light mode on');
+            });
+            $('settings-notif-toggle').addEventListener('click', function() {
+                toast(this.classList.contains('active') ? '🔔 Notifications on' : '🔕 Notifications muted');
+            });
+            $('settings-visibility-toggle').addEventListener('click', function() {
+                toast(this.classList.contains('active') ? '👁️ Profile is public' : '🔒 Profile is private');
             });
             $('verification-submit').addEventListener('click', () => toast('📋 Verification submitted!'));
 
             $('profile-payments-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
-            $('profile-payments-add').addEventListener('click', () => toast('➕ Add payment'));
+            function addPaymentMethod() {
+                const name = prompt('Payment method name (e.g. "HDFC Debit Card"):');
+                if (!name || !name.trim()) return;
+                const detail = prompt('Detail to show (e.g. "•••• 1234" or an ID):') || '';
+                const card = document.createElement('div');
+                card.className = 'payment-card';
+                card.innerHTML = `
+              <div class="pc-icon" style="background:rgba(108,92,231,0.08);color:var(--primary);"><i data-lucide="credit-card" size="18"></i></div>
+              <div class="pc-info"><div class="pc-name">${name.trim()}</div><div class="pc-detail">${detail}</div></div>
+              <div class="pc-radio"></div>
+            `;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.payment-card .pc-radio').forEach(r => r.classList.remove('active'));
+                    card.querySelector('.pc-radio').classList.add('active');
+                    toast('💳 Payment method selected');
+                });
+                $('payments-add-new').insertAdjacentElement('beforebegin', card);
+                renderIcons();
+                toast('✅ Payment method added');
+            }
             document.querySelectorAll('.payment-card').forEach(card => {
                 card.addEventListener('click', () => {
                     document.querySelectorAll('.payment-card .pc-radio').forEach(r => r.classList.remove(
@@ -5300,20 +5682,66 @@
                     toast('💳 Payment method selected');
                 });
             });
-            $('payments-add-new').addEventListener('click', () => toast('➕ Add new payment'));
+            $('profile-payments-add').addEventListener('click', addPaymentMethod);
+            $('payments-add-new').addEventListener('click', addPaymentMethod);
             $('payments-save-default').addEventListener('click', () => toast('✅ Default payment updated!'));
 
             $('profile-help-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
+            const HELP_CONTENT = {
+                'FAQ': 'Q: How do bids work?\nA: Post a gig with your budget, and nearby helpers submit competing bids — pick whichever offer suits you best.\n\nQ: Is NearCircle free?\nA: Posting and browsing is always free; you only pay the helper you choose.',
+                'Email Support': 'You can reach us anytime at support@nearcircle.in — we typically reply within a few hours.',
+                'Call Us': 'Our support line +91 1800-123-4567 is open daily from 9 AM to 9 PM.',
+            };
             document.querySelectorAll('.help-item').forEach(item => {
-                item.addEventListener('click', () => toast('📖 Opening help...'));
+                const title = item.querySelector('.help-title')?.textContent || '';
+                item.addEventListener('click', () => {
+                    if (title === 'Live Chat') {
+                        let chat = CHATS.find(c => c.name === 'NearCircle Support');
+                        if (!chat) {
+                            chat = { id: Date.now(), name: 'NearCircle Support', img: avatarDataUri('NearCircle Support'),
+                                time: 'Now', last: 'Hi! How can we help today?', unread: 0, status: 'Online' };
+                            CHATS.unshift(chat);
+                            state.chatMessages[chat.id] = [
+                                { from: 'them', text: "Hi! 👋 I'm here to help with anything NearCircle related.", time: 'Now' },
+                            ];
+                        }
+                        state.activeChatId = chat.id;
+                        state.activeGigId = null;
+                        navigate('chatConvo');
+                        return;
+                    }
+                    if (HELP_CONTENT[title]) {
+                        alert(title + '\n\n' + HELP_CONTENT[title]);
+                    } else {
+                        toast('📖 Opening ' + title + '...');
+                    }
+                });
             });
-            $('help-contact-btn').addEventListener('click', () => toast('📧 Support will contact you.'));
+            $('help-contact-btn').addEventListener('click', () => toast('📧 Support will contact you shortly.'));
 
             $('profile-settings-back').addEventListener('click', () => { state.profileDetail = null;
                 navigate('profile'); });
+            const LANGUAGES = ['English', 'हिंदी', 'मराठी', 'தமிழ்'];
+            $('settings-language-row').addEventListener('click', () => {
+                const el = $('settings-language-value');
+                const idx = LANGUAGES.indexOf(el.textContent);
+                const next = LANGUAGES[(idx + 1) % LANGUAGES.length];
+                el.textContent = next;
+                toast('🌐 Language set to ' + next);
+            });
+            const LOCATION_MODES = ['While Using', 'Always', 'Never'];
+            $('settings-location-row').addEventListener('click', () => {
+                const el = $('settings-location-value');
+                const idx = LOCATION_MODES.indexOf(el.textContent);
+                const next = LOCATION_MODES[(idx + 1) % LOCATION_MODES.length];
+                el.textContent = next;
+                toast('📍 Location sharing: ' + next);
+            });
             document.querySelectorAll('.settings-row').forEach(row => {
                 if (row.id === 'settings-logout-row') return;
+                if (row.id === 'settings-language-row' || row.id === 'settings-location-row') return;
+                if (row.querySelector('.toggle-switch')) return;
                 row.addEventListener('click', () => {
                     const label = row.querySelector('.settings-label')?.textContent || 'Setting';
                     toast(`⚙️ ${label} opened`);
