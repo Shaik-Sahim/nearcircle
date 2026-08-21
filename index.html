@@ -623,6 +623,10 @@
             transform: translate(-50%, -50%) scale(1.15);
             z-index: 5;
         }
+        .radar-person-enter {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.25);
+        }
         .radar-person img {
             width: 44px;
             height: 44px;
@@ -3664,19 +3668,26 @@
             All: '#6C5CE7',
         };
 
+        // Fixed real-world distance (km) + angle (degrees) per person.
+        // The radar computes each dot's on-screen position live from
+        // these, relative to whatever radius is currently selected —
+        // so widening the radius reveals people who were previously
+        // out of range, instead of just rescaling the same six.
         const NEARBY_PEOPLE = [
-            { id: 1, name: 'Karan', profession: 'Plumber', dist: '0.4 km', img: 'https://i.pravatar.cc/80?img=12',
-                top: '10%', left: '38%' },
-            { id: 2, name: 'Vivek', profession: 'Electrician', dist: '1.2 km', img: 'https://i.pravatar.cc/80?img=33',
-                top: '14%', left: '72%' },
-            { id: 3, name: 'Meera', profession: 'Pet Sitter', dist: '2.9 km', img: 'https://i.pravatar.cc/80?img=47',
-                top: '46%', left: '8%' },
-            { id: 4, name: 'Sana', profession: 'Tutor', dist: '5.8 km', img: 'https://i.pravatar.cc/80?img=25',
-                top: '48%', left: '84%' },
-            { id: 5, name: 'Rohit', profession: 'Carpenter', dist: '3.6 km', img: 'https://i.pravatar.cc/80?img=14',
-                top: '80%', left: '26%' },
-            { id: 6, name: 'Divya', profession: 'Cleaner', dist: '2.9 km', img: 'https://i.pravatar.cc/80?img=48',
-                top: '80%', left: '62%' },
+            { id: 1, name: 'Karan', profession: 'Plumber', distKm: 0.3, angle: 55, img: 'https://i.pravatar.cc/80?img=12' },
+            { id: 2, name: 'Divya', profession: 'Cleaner', distKm: 0.6, angle: 165, img: 'https://i.pravatar.cc/80?img=48' },
+            { id: 3, name: 'Vivek', profession: 'Electrician', distKm: 0.9, angle: 285, img: 'https://i.pravatar.cc/80?img=33' },
+            { id: 4, name: 'Meera', profession: 'Pet Sitter', distKm: 1.4, angle: 100, img: 'https://i.pravatar.cc/80?img=47' },
+            { id: 5, name: 'Priya', profession: 'Tutor', distKm: 1.8, angle: 325, img: 'https://i.pravatar.cc/80?img=32' },
+            { id: 6, name: 'Arjun', profession: 'Handyman', distKm: 2.1, angle: 205, img: 'https://i.pravatar.cc/80?img=15' },
+            { id: 7, name: 'Rohit', profession: 'Carpenter', distKm: 2.6, angle: 15, img: 'https://i.pravatar.cc/80?img=14' },
+            { id: 8, name: 'Sana', profession: 'Tutor', distKm: 2.9, angle: 250, img: 'https://i.pravatar.cc/80?img=25' },
+            { id: 9, name: 'Kavya', profession: 'Baker', distKm: 3.7, angle: 135, img: 'https://i.pravatar.cc/80?img=9' },
+            { id: 10, name: 'Devansh', profession: 'Mechanic', distKm: 4.3, angle: 65, img: 'https://i.pravatar.cc/80?img=17' },
+            { id: 11, name: 'Ritu', profession: 'Designer', distKm: 4.9, angle: 345, img: 'https://i.pravatar.cc/80?img=45' },
+            { id: 12, name: 'Aisha', profession: 'Yoga Instructor', distKm: 6.2, angle: 190, img: 'https://i.pravatar.cc/80?img=28' },
+            { id: 13, name: 'Farhan', profession: 'Photographer', distKm: 7.5, angle: 80, img: 'https://i.pravatar.cc/80?img=51' },
+            { id: 14, name: 'Neha', profession: 'Chef', distKm: 9.1, angle: 300, img: 'https://i.pravatar.cc/80?img=39' },
         ];
 
         // Updated: More popular services to show on home
@@ -4251,6 +4262,10 @@
         // RADIUS
         // ============================================================
 
+        function peopleWithinRadius(km) {
+            return NEARBY_PEOPLE.filter(p => p.distKm <= km);
+        }
+
         function updateRadius(km) {
             state.radius = km;
             $('radius-display').textContent = km + ' km';
@@ -4262,12 +4277,38 @@
                 ring.style.width = newSize + '%';
                 ring.style.height = newSize + '%';
             });
-            NEARBY_PEOPLE.forEach(p => {
-                const distNum = parseFloat(p.dist);
-                const newDist = (distNum * (km / 3)).toFixed(1);
-                const span = document.querySelector(`.radar-person[data-name="${p.name}"] .radar-dist`);
-                if (span) span.textContent = newDist + ' km';
+
+            const container = $('radar-container');
+            document.querySelectorAll('.radar-person').forEach(el => el.remove());
+
+            const visible = peopleWithinRadius(km).sort((a, b) => a.distKm - b.distKm);
+            visible.forEach(p => {
+                // Position scales relative to the CURRENT radius, so the
+                // same person sits further from center on a small radius
+                // (near the edge of what's visible) and closer to center
+                // once the radius grows past them.
+                const fraction = Math.max(0.16, Math.min(p.distKm / km, 0.94));
+                const rad = (p.angle * Math.PI) / 180;
+                const left = 50 + fraction * 42 * Math.cos(rad);
+                const top = 50 + fraction * 38 * Math.sin(rad);
+
+                const div = document.createElement('div');
+                div.className = 'radar-person radar-person-enter';
+                div.style.top = top + '%';
+                div.style.left = left + '%';
+                div.dataset.name = p.name;
+                div.innerHTML = `<img src="${p.img}" alt="${p.name}" /><span class="radar-dist">${p.distKm.toFixed(1)} km</span>`;
+                div.addEventListener('click', () => {
+                    state.selectedPerson = p;
+                    showPersonSheet(p);
+                });
+                container.appendChild(div);
+                // Add then immediately un-add the "entering" class on the
+                // next frame so the browser animates from it (fade+scale in).
+                requestAnimationFrame(() => div.classList.remove('radar-person-enter'));
             });
+
+            $('people-count').textContent = `${visible.length} people nearby`;
         }
 
         // ============================================================
@@ -4275,23 +4316,6 @@
         // ============================================================
 
         function renderRadar() {
-            const container = $('radar-container');
-            document.querySelectorAll('.radar-person').forEach(el => el.remove());
-            NEARBY_PEOPLE.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'radar-person';
-                div.style.top = p.top;
-                div.style.left = p.left;
-                div.dataset.name = p.name;
-                div.innerHTML =
-                    `<img src="${p.img}" alt="${p.name}" /><span class="radar-dist">${p.dist}</span>`;
-                div.addEventListener('click', () => {
-                    state.selectedPerson = p;
-                    showPersonSheet(p);
-                });
-                container.appendChild(div);
-            });
-            $('people-count').textContent = `${NEARBY_PEOPLE.length} people nearby`;
             updateRadius(state.radius);
         }
 
@@ -4301,7 +4325,8 @@
             $('person-sheet-avatar').alt = person.name;
             $('person-sheet-name').textContent = person.name;
             $('person-sheet-profession').textContent = person.profession || 'Professional';
-            $('person-sheet-distance').textContent = person.dist || 'Nearby';
+            $('person-sheet-distance').textContent = (typeof person.distKm === 'number') ?
+                (person.distKm.toFixed(1) + ' km away') : 'Nearby';
 
             const followBtn = $('person-sheet-follow');
             const isFollow = isFollowing(person.id);
@@ -5342,8 +5367,19 @@
 
             // ---- Radius ----
             $('radius-selector').addEventListener('change', function() {
-                updateRadius(parseInt(this.value));
-                toast(`Radius updated to ${this.value} km`);
+                const km = parseInt(this.value);
+                const before = peopleWithinRadius(state.radius).length;
+                updateRadius(km);
+                renderIcons();
+                const after = peopleWithinRadius(km).length;
+                if (after > before) {
+                    const added = after - before;
+                    toast(`✨ ${added} new ${added === 1 ? 'person' : 'people'} found within ${km} km!`);
+                } else if (after < before) {
+                    toast(`Radius set to ${km} km — showing ${after} nearby`);
+                } else {
+                    toast(`Radius set to ${km} km`);
+                }
             });
 
             // ---- Sidebar nav ----
